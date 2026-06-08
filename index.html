@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste IA - Certificação DPO</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 600px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+        #status { color: gray; font-size: 14px; margin-top: 10px; }
+        #resultado { margin-top: 20px; white-space: pre-wrap; background: #f4f4f4; padding: 15px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>Simulador DPO - Teste de Integração</h2>
+    <button id="btnGerar" onclick="gerarQuestao()">Gerar Questão com IA</button>
+    <div id="status"></div>
+    <div id="resultado">A resposta da IA aparecerá aqui...</div>
+
+    <script>
+        async function gerarQuestao() {
+            const btn = document.getElementById('btnGerar');
+            const status = document.getElementById('status');
+            const resultado = document.getElementById('resultado');
+
+            // Feedback visual enquanto aguarda a API
+            btn.disabled = true;
+            status.innerText = "Consultando a IA do Google... Aguarde alguns segundos.";
+            resultado.innerText = "";
+
+            try {
+                // Comunicação com o seu servidor local
+                const response = await fetch('http://localhost:3000/api/gerar-questao', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultado.innerText = data.questao;
+                    status.innerText = "Questão gerada e recebida com sucesso!";
+                } else {
+                    resultado.innerText = "Erro retornado pelo servidor: " + data.error;
+                    status.innerText = "Falha na requisição.";
+                }
+            } catch (error) {
+                resultado.innerText = "Erro de conexão: " + error.message + "\n\nVerifique se o servidor Node.js está rodando no terminal.";
+                status.innerText = "Falha na requisição.";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
