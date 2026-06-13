@@ -1,3 +1,5 @@
+import { ReactNode } from "react"
+
 export interface Questao {
     pergunta: string
     alternativas: string[]
@@ -15,6 +17,7 @@ export interface Certificacao {
     id: string
     nome: string
     descricao: string
+    icone: ReactNode
 }
 
 export type Dificuldade = 'Iniciante' | 'Intermediário' | 'Avançado'

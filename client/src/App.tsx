@@ -1,6 +1,8 @@
 import { useState } from "react";
 import type { Certificacao, Dificuldade, QuestaoRespondida, Tela } from "./types";
 import TelaSetup from "./components/TelaSetup";
+import TelaQuiz from "./components/TelaQuiz";
+import TelaResultado from "./components/TelaResultado";
 
 export default function App() {
   const [tela, setTela] = useState<Tela>('setup')
@@ -26,6 +28,28 @@ export default function App() {
     setQuantidade(5)
     setRespostas([])
     setTela('setup')
+  }
+
+  if (tela === 'quiz' && certSelecionada) {
+    return (
+      <TelaQuiz
+        certificacao={certSelecionada}
+        dificuldade={dificuldade}
+        quantidade={quantidade}
+        onConcluir={concluirSimulado}
+      />
+    )
+  }
+
+  if (tela === 'resultado' && certSelecionada){
+    return (
+      <TelaResultado
+        respostas={respostas}
+        certificacao={certSelecionada}
+        dificuldade={dificuldade}
+        onReiniciar={reiniciar}
+      />
+    )
   }
 
   return (

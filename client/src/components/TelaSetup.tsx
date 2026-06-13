@@ -49,6 +49,9 @@ export default function TelaSetup({
                                             : 'border-gray-100 bg-gray-50 hover:border-gray-200 hover:bg-white'
                                         }`}
                                 >
+                                    <span className={`block mb-2 ${selected ? 'text-brand-600' : 'text-gray-400'}`}>
+                                        {cert.icone}
+                                    </span>
                                     <p className={`text-sm font-semibold leading-tight ${selected ? 'text-brand-800' : 'text-gray-900'}`}>
                                         {cert.nome}
                                     </p>
