@@ -44,6 +44,7 @@ export default function TelaResultado({ respostas, certificacao, dificuldade, on
                             <p className="text-xs text-gray-400 mt-0.5">Erros</p>
                         </div>
                         <div className="text-center">
+                            <p className="text-sm font-medium text-gray-700">{certificacao.icone}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{dificuldade}</p>
                         </div>
                     </div>
@@ -66,9 +67,27 @@ export default function TelaResultado({ respostas, certificacao, dificuldade, on
                                 </span>
                                 <p className="text-sm text-gray-800 leading-relaxed">{r.questao.pergunta}</p>
                             </div>
+
+                            {!r.correta && (
+                                <div className="ml-9 text-xs text-red-600 mb-1.5">
+                                    Sua resposta: {letra(r.escolhida)} {r.questao.alternativas[r.escolhida].replace(/^[A-D]\)\s*/, "")}
+                                </div>
+                            )}
+
+                            <div className="ml-9 text-xs text-green-700 mb-3">
+                                Correta: {letra(r.questao.correta)} {r.questao.alternativas[r.questao.correta].replace(/^[A-D]\)\s*/, "")}
+                            </div>
+
+                            <div className="ml-9 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                                <p className="text-xs text-gray-600 leading-relaxed">{r.questao.explicacao}</p>
+                            </div>s
                         </div>
                     ))}
                 </div>
+
+                <button className="btn-primary w-full py-4 text-base" onClick={onReiniciar}>
+                    Fazer novo simulado
+                </button>
             </div>
         </div>
     )
