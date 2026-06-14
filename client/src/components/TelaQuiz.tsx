@@ -137,18 +137,18 @@ export default function TelaQuiz({ certificacao, dificuldade, quantidade, onConc
                                     )
                                 })}
                             </div>
-
-                            {respondida && questaoAtual && (
-                                <div className="flex justify-end">
-                                    <button className="btn btn-primary px-8" onClick={avancar}>
-                                        {indice + 1 >= quantidade ? 'Ver resultado' : 'Próxima questão'}
-                                        <ChevronRight size={18}/>
-                                    </button>
-                                </div>
-                            )}
                         </>
-                    )}
+                    )}  
                 </div>
+
+                {respondida && questaoAtual && (
+                    <div className="flex justify-end">
+                        <button className="btn-primary flex items-center gap-2 px-8" onClick={avancar}>
+                                {indice + 1 >= quantidade ? 'Ver resultado' : 'Próxima questão'}
+                            <ChevronRight size={18}/>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     )

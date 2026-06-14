@@ -21,7 +21,7 @@ export default function TelaResultado({ respostas, certificacao, dificuldade, on
     }
 
     const corPct = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-yellow-600' : 'text-red-600'
-    const corCirculo = pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-yellow-600' : 'text-red-600'
+    const corCirculo = pct >= 80 ? 'border-green-600' : pct >= 60 ? 'border-yellow-600' : 'border-red-600'
     const { titulo, sub } = mensagem()
 
     return (
@@ -43,8 +43,8 @@ export default function TelaResultado({ respostas, certificacao, dificuldade, on
                             <p className="text-2xl font-semibold text-gray-900">{total-acertos}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Erros</p>
                         </div>
-                        <div className="text-center">
-                            <p className="text-sm font-medium text-gray-700">{certificacao.icone}</p>
+                        <div className="text-center flex flex-col items-center jusutify center mt-2">
+                            <p className="font-medium text-gray-700">{certificacao.nome}</p>
                             <p className="text-xs text-gray-400 mt-0.5">{dificuldade}</p>
                         </div>
                     </div>
@@ -80,7 +80,7 @@ export default function TelaResultado({ respostas, certificacao, dificuldade, on
 
                             <div className="ml-9 p-3 bg-gray-50 rounded-lg border border-gray-100">
                                 <p className="text-xs text-gray-600 leading-relaxed">{r.questao.explicacao}</p>
-                            </div>s
+                            </div>
                         </div>
                     ))}
                 </div>

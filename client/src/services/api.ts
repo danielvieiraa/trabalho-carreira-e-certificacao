@@ -9,7 +9,7 @@ interface GerarQuestaoResponse {
 }
 
 export async function gerarQuestao(certificacao: string, dificuldade: string): Promise<Questao> {
-    const response = await fetch(`${API_BASE}/gerar_questao`, {
+    const response = await fetch(`${API_BASE}/gerar-questao`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ certificacao, dificuldade })
