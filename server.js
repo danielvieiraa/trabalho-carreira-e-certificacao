@@ -100,6 +100,62 @@ app.post('/api/gerar-questao', async (req, res) => {
     }
 });
 
+// 4. Rota para salvar respostas do simulado
+app.post('/api/salvar-respostas', async (req, res) => {
+    try {
+        const { certificacao, dificuldade, respostas } = req.body;
+
+        if (!certificacao || !dificuldade || !respostas || !Array.isArray(respostas)) {
+            return res.status(400).json({
+                error: 'Dados inválidos. Envie certificacao, dificuldade e respostas.'
+            });
+        }
+
+        // Formatar as respostas com índice (opção selecionada) e correta
+        const respostasFormatadas = respostas.map((r, idx) => ({
+            numero_questao: idx + 1,
+            selecionada: r.escolhida,
+            correta: r.correta,
+            acertou: r.escolhida === r.correta
+        }));
+
+        const updateQuery = `
+            UPDATE historico_simulados 
+            SET respostas_usuario = $1
+            WHERE id = $2
+            RETURNING id, respostas_usuario
+        `;
+
+        // Assumindo que a primeira resposta vem com o id_banco da questão
+        // Caso contrário, precisaríamos inserir um novo registro
+        if (respostas[0]?.id_banco) {
+            const result = await pool.query(updateQuery, [JSON.stringify(respostasFormatadas), respostas[0].id_banco]);
+            return res.json({
+                sucesso: true,
+                id: result.rows[0]?.id,
+                respostas_salvas: result.rows[0]?.respostas_usuario
+            });
+        }
+
+        // Se não houver id_banco, vamos inserir um novo registro
+        const insertQuery = `
+            INSERT INTO historico_simulados (certificacao, dificuldade, respostas_usuario)
+            VALUES ($1, $2, $3)
+            RETURNING id, respostas_usuario
+        `;
+        const result = await pool.query(insertQuery, [certificacao, dificuldade, JSON.stringify(respostasFormatadas)]);
+        
+        res.json({
+            sucesso: true,
+            id: result.rows[0].id,
+            respostas_salvas: result.rows[0].respostas_usuario
+        });
+    } catch (error) {
+        console.error("Erro ao salvar respostas:", error);
+        res.status(500).json({ error: 'Falha ao salvar respostas.' });
+    }
+});
+
 app.get('/api/historico', async (req, res) => {
     try {
         const { certificacao } = req.query;
@@ -114,7 +170,7 @@ app.get('/api/historico', async (req, res) => {
     }
 });
 
-// 4. Inicialização do servidor
+// 5. Inicialização do servidor
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor de API rodando em http://localhost:${PORT}`);

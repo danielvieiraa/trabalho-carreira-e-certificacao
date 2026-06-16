@@ -9,11 +9,12 @@ interface Props {
     onSelectionarDificuldade: (d: Dificuldade) => void
     onSelecionarQuantidade: (q: number) => void
     onIniciar: () => void
+    onAbrirHistorico: () => void
 }
 
 export default function TelaSetup({
     certSelecionada, dificuldade, quantidade,
-    onSelecionarCert, onSelectionarDificuldade, onSelecionarQuantidade, onIniciar,
+    onSelecionarCert, onSelectionarDificuldade, onSelecionarQuantidade, onIniciar, onAbrirHistorico,
 }: Props) {
     return (
         <div className="min-h-screen bg-gray-50 flex items-start justify-center px-4 pt-12 pb-16">
@@ -108,16 +109,24 @@ export default function TelaSetup({
                     </div>
                 </div>
 
-                <button
-                    className="btn-primary w-full py-4 text-base"
-                    disabled={!certSelecionada}
-                    onClick={onIniciar}
-                >
-                    {certSelecionada
-                        ? `Iniciar simulado - ${certSelecionada.nome}`
-                        : 'Selecione uma certificação para continuar'
-                    }
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        className="btn-primary flex-1 py-4 text-base"
+                        disabled={!certSelecionada}
+                        onClick={onIniciar}
+                    >
+                        {certSelecionada
+                            ? `Iniciar simulado - ${certSelecionada.nome}`
+                            : 'Selecione uma certificação para continuar'
+                        }
+                    </button>
+                    <button
+                        onClick={onAbrirHistorico}
+                        className="btn-secondary flex-1 py-4 text-base"
+                    >
+                        Ver Histórico
+                    </button>
+                </div>
             </div>
         </div>
     )
