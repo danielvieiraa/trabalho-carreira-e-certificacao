@@ -3,6 +3,7 @@ import type { Certificacao, Dificuldade, QuestaoRespondida, Tela } from "./types
 import TelaSetup from "./components/TelaSetup";
 import TelaQuiz from "./components/TelaQuiz";
 import TelaResultado from "./components/TelaResultado";
+import TelaHistorico from "./components/TelaHistorico";
 
 export default function App() {
   const [tela, setTela] = useState<Tela>('setup')
@@ -28,6 +29,18 @@ export default function App() {
     setQuantidade(5)
     setRespostas([])
     setTela('setup')
+  }
+
+  function abrirHistorico() {
+    setTela('historico')
+  }
+
+  function voltarDoHistorico() {
+    setTela('setup')
+  }
+
+  if (tela === 'historico') {
+    return <TelaHistorico onVoltar={voltarDoHistorico} />
   }
 
   if (tela === 'quiz' && certSelecionada) {
@@ -61,6 +74,7 @@ export default function App() {
       onSelectionarDificuldade={setDificuldade}
       onSelecionarQuantidade={setQuantidade}
       onIniciar={iniciarSimulado}
+      onAbrirHistorico={abrirHistorico}
     />
   )
 }

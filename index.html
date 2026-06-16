@@ -14,10 +14,15 @@
 <body>
     <h2>Simulador DPO - Teste de Integração</h2>
     <button id="btnGerar" onclick="gerarQuestao()">Gerar Questão com IA</button>
+    <button id="btnHistorico" onclick="irParaHistorico()">Ver Histórico</button>
     <div id="status"></div>
     <div id="resultado">A resposta da IA aparecerá aqui...</div>
 
     <script>
+        function irParaHistorico() {
+            window.location.href = 'http://localhost:3000/api/historico';
+        }
+
         async function gerarQuestao() {
             const btn = document.getElementById('btnGerar');
             const status = document.getElementById('status');

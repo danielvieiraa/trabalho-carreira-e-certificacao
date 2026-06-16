@@ -22,4 +22,4 @@ export interface Certificacao {
 
 export type Dificuldade = 'Iniciante' | 'Intermediário' | 'Avançado'
 
-export type Tela = 'setup' | 'quiz' | 'resultado'
+export type Tela = 'setup' | 'quiz' | 'resultado' | 'historico'

@@ -1,4 +1,4 @@
-import type { Questao } from "../types";
+import type { Questao, QuestaoRespondida } from "../types";
 
 const API_BASE = '/api'
 
@@ -6,6 +6,12 @@ interface GerarQuestaoResponse {
     questao: Questao
     id_banco: number
     data_geracao: string
+}
+
+interface SalvarRespostasResponse {
+    sucesso: boolean
+    id: number
+    respostas_salvas: unknown
 }
 
 export async function gerarQuestao(certificacao: string, dificuldade: string): Promise<Questao> {
@@ -22,4 +28,26 @@ export async function gerarQuestao(certificacao: string, dificuldade: string): P
 
     const data: GerarQuestaoResponse = await response.json();
     return data.questao;
+}
+
+export async function salvarRespostas(certificacao: string, dificuldade: string, respostas: QuestaoRespondida[]): Promise<SalvarRespostasResponse> {
+    const respostasFormatadas = respostas.map(r => ({
+        escolhida: r.escolhida,
+        correta: r.questao.correta,
+        acertou: r.correta
+    }));
+
+    const response = await fetch(`${API_BASE}/salvar-respostas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ certificacao, dificuldade, respostas: respostasFormatadas })
+    })
+
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error((err as {error?: string}).error ?? `Erro ${response.status}`);
+    }
+
+    const data: SalvarRespostasResponse = await response.json();
+    return data;
 }

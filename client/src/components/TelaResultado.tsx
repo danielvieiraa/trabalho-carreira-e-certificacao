@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { Check, X } from "lucide-react";
 import type { QuestaoRespondida, Certificacao, Dificuldade } from "../types";
+import { salvarRespostas } from "../services/api";
 
 interface Props {
     respostas: QuestaoRespondida[]
@@ -13,6 +15,21 @@ export default function TelaResultado({ respostas, certificacao, dificuldade, on
     const acertos = respostas.filter((r) => r.correta).length
     const pct = Math.round((acertos / total) * 100)
     const letra = (i: number) => ['A', 'B', 'C', 'D'][i]
+    const [salvo, setSalvo] = useState(false)
+    const [erro, setErro] = useState<string | null>(null)
+
+    useEffect(() => {
+        async function salvarDados() {
+            try {
+                await salvarRespostas(certificacao.id, dificuldade, respostas)
+                setSalvo(true)
+            } catch (e) {
+                setErro(e instanceof Error ? e.message : 'Erro ao salvar respostas')
+                console.error("Erro ao salvar:", e)
+            }
+        }
+        salvarDados()
+    }, [respostas, certificacao.id, dificuldade])
 
     const mensagem = () => {
         if (pct >= 80) return { titulo: 'Resultado excelente!', sub: 'Você está bem preparado para a prova.' }
@@ -33,6 +50,18 @@ export default function TelaResultado({ respostas, certificacao, dificuldade, on
                     </div>
                     <h1 className="text-xl font-semibold text-gray-900 mb-1">{titulo}</h1>
                     <p className="text-gray-500 text-sm mb-5">{sub}</p>
+
+                    {erro && (
+                        <div className="mt-3 p-2 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="text-xs text-red-600">{erro}</p>
+                        </div>
+                    )}
+
+                    {salvo && (
+                        <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                            <p className="text-xs text-green-600">✓ Respostas salvas com sucesso</p>
+                        </div>
+                    )}
 
                     <div className="flex justify-center gap-6 pt-4 border-t border-gray-100">
                         <div className="text-center">
