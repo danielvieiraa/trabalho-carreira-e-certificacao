@@ -45,7 +45,7 @@ app.post('/api/gerar-questao', async (req, res) => {
             })
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
         const prompt = `Você é um gerador de questões para certificações de TI.
         gere UMA questão de múltipla escolha de nível ${dificuldade} para a certificação ${cert.nome} (${cert.descricao}).
@@ -111,44 +111,37 @@ app.post('/api/salvar-respostas', async (req, res) => {
             });
         }
 
-        // Formatar as respostas com índice (opção selecionada) e correta
-        const respostasFormatadas = respostas.map((r, idx) => ({
-            numero_questao: idx + 1,
-            selecionada: r.escolhida,
-            correta: r.correta,
-            acertou: r.escolhida === r.correta
-        }));
+        if (!respostas.every((r) => r.id_banco && Number.isInteger(r.id_banco))) {
+            return res.status(400).json({
+                error: 'Cada resposta deve conter id_banco válido.'
+            });
+        }
 
         const updateQuery = `
-            UPDATE historico_simulados 
+            UPDATE historico_simulados
             SET respostas_usuario = $1
             WHERE id = $2
             RETURNING id, respostas_usuario
         `;
 
-        // Assumindo que a primeira resposta vem com o id_banco da questão
-        // Caso contrário, precisaríamos inserir um novo registro
-        if (respostas[0]?.id_banco) {
-            const result = await pool.query(updateQuery, [JSON.stringify(respostasFormatadas), respostas[0].id_banco]);
-            return res.json({
-                sucesso: true,
-                id: result.rows[0]?.id,
-                respostas_salvas: result.rows[0]?.respostas_usuario
-            });
+        const respostasAtualizadas = [];
+        for (const resposta of respostas) {
+            const respostaUsuario = {
+                escolhida: resposta.escolhida,
+                correta: resposta.correta,
+                acertou: resposta.acertou
+            };
+
+            const result = await pool.query(updateQuery, [JSON.stringify(respostaUsuario), resposta.id_banco]);
+            if (result.rows.length) {
+                respostasAtualizadas.push(result.rows[0]);
+            }
         }
 
-        // Se não houver id_banco, vamos inserir um novo registro
-        const insertQuery = `
-            INSERT INTO historico_simulados (certificacao, dificuldade, respostas_usuario)
-            VALUES ($1, $2, $3)
-            RETURNING id, respostas_usuario
-        `;
-        const result = await pool.query(insertQuery, [certificacao, dificuldade, JSON.stringify(respostasFormatadas)]);
-        
         res.json({
             sucesso: true,
-            id: result.rows[0].id,
-            respostas_salvas: result.rows[0].respostas_usuario
+            atualizados: respostasAtualizadas.length,
+            respostas_salvas: respostasAtualizadas
         });
     } catch (error) {
         console.error("Erro ao salvar respostas:", error);
