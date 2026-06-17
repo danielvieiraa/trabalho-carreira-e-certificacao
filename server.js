@@ -2,11 +2,34 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { Pool } = require('pg');
+let bcrypt;
+try {
+    bcrypt = require('bcryptjs');
+} catch (err) {
+    // fallback: sometimes dependencies are installed in client/node_modules
+    try {
+        bcrypt = require('./client/node_modules/bcryptjs');
+    } catch (err2) {
+        throw err; // rethrow original error to surface to developer
+    }
+}
+let jwt;
+try {
+    jwt = require('jsonwebtoken');
+} catch (err) {
+    try {
+        jwt = require('./client/node_modules/jsonwebtoken');
+    } catch (err2) {
+        throw err;
+    }
+}
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+const JWT_SECRET = process.env.JWT_SECRET || 'troque_este_segredo_em_producao';
 
 // 1. Conexão com o Banco de Dados PostgreSQL
 const pool = new Pool({
@@ -16,6 +39,19 @@ const pool = new Pool({
     password: process.env.DB_PASSWORD,
     port: process.env.DB_PORT,
 });
+
+async function initDb() {
+    await pool.query(`CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username TEXT UNIQUE NOT NULL,
+        password_hash TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT now()
+    )`);
+
+    await pool.query(`ALTER TABLE historico_simulados ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)`);
+}
+
+initDb().catch((error) => console.error('Erro ao inicializar o banco:', error));
 
 // 2. Instância do Google Gemini
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -58,12 +94,88 @@ function gerarQuestaoFallback(certificacao, dificuldade) {
     };
 }
 
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Token não fornecido.' });
+    }
+
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        req.user = payload;
+        next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Token inválido.' });
+    }
+}
+
 app.get('/', (req, res) => {
     res.send('Servidor online')
 });
 
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username e senha são obrigatórios.' });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const result = await pool.query(
+            'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username',
+            [username, hashedPassword]
+        );
+
+        const user = result.rows[0];
+        const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+
+        res.json({ user, token });
+    } catch (error) {
+        if (error.code === '23505') {
+            return res.status(409).json({ error: 'Usuário já existe.' });
+        }
+        console.error('Erro ao registrar usuário:', error);
+        res.status(500).json({ error: 'Falha ao registrar usuário.' });
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username e senha são obrigatórios.' });
+        }
+
+        const result = await pool.query('SELECT id, username, password_hash FROM users WHERE username = $1', [username]);
+        const user = result.rows[0];
+
+        if (!user) {
+            return res.status(400).json({ error: 'Usuário ou senha inválidos.' });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Usuário ou senha inválidos.' });
+        }
+
+        const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
+        res.json({ user: { id: user.id, username: user.username }, token });
+    } catch (error) {
+        console.error('Erro ao fazer login:', error);
+        res.status(500).json({ error: 'Falha ao fazer login.' });
+    }
+});
+
+app.get('/api/me', authenticateToken, (req, res) => {
+    res.json({ user: req.user });
+});
+
 // 3. Rota de comunicação com a IA
-app.post('/api/gerar-questao', async (req, res) => {
+app.post('/api/gerar-questao', authenticateToken, async (req, res) => {
     try {
         const { certificacao = 'DPO', dificuldade = 'Iniciante' } = req.body
 
@@ -123,11 +235,11 @@ app.post('/api/gerar-questao', async (req, res) => {
 
         // Persistência: Grava o resultado na tabela historico_simulados
         const insertQuery = `
-            INSERT INTO historico_simulados (conteudo_questao, certificacao, dificuldade)
-            VALUES ($1, $2, $3)
+            INSERT INTO historico_simulados (conteudo_questao, certificacao, dificuldade, user_id)
+            VALUES ($1, $2, $3, $4)
             RETURNING id, data_geracao
         `;
-        const dbResult = await pool.query(insertQuery, [textoLimpo, certificacao, dificuldade]);
+        const dbResult = await pool.query(insertQuery, [textoLimpo, certificacao, dificuldade, req.user.userId]);
 
         res.json({ 
             questao,
@@ -142,7 +254,7 @@ app.post('/api/gerar-questao', async (req, res) => {
 });
 
 // 4. Rota para salvar respostas do simulado
-app.post('/api/salvar-respostas', async (req, res) => {
+app.post('/api/salvar-respostas', authenticateToken, async (req, res) => {
     try {
         const { certificacao, dificuldade, respostas } = req.body;
 
@@ -161,7 +273,7 @@ app.post('/api/salvar-respostas', async (req, res) => {
         const updateQuery = `
             UPDATE historico_simulados
             SET respostas_usuario = $1
-            WHERE id = $2
+            WHERE id = $2 AND user_id = $3
             RETURNING id, respostas_usuario
         `;
 
@@ -170,10 +282,11 @@ app.post('/api/salvar-respostas', async (req, res) => {
             const respostaUsuario = {
                 escolhida: resposta.escolhida,
                 correta: resposta.correta,
-                acertou: resposta.acertou
+                acertou: resposta.acertou,
+                user_id: req.user.userId
             };
 
-            const result = await pool.query(updateQuery, [JSON.stringify(respostaUsuario), resposta.id_banco]);
+            const result = await pool.query(updateQuery, [JSON.stringify(respostaUsuario), resposta.id_banco, req.user.userId]);
             if (result.rows.length) {
                 respostasAtualizadas.push(result.rows[0]);
             }
@@ -190,14 +303,25 @@ app.post('/api/salvar-respostas', async (req, res) => {
     }
 });
 
-app.get('/api/historico', async (req, res) => {
+app.get('/api/historico', authenticateToken, async (req, res) => {
     try {
-        const { certificacao } = req.query;
-        const query = certificacao
-            ? 'SELECT * FROM historico_simulados WHERE certificacao = $1 ORDER BY data_geracao DESC LIMIT 50'
-            : 'SELECT * FROM historico_simulados ORDER BY data_geracao DESC LIMIT 50';
-        
-        const result = await pool.query(query, certificacao ? [certificacao] : []);
+        const { certificacao, user_id } = req.query;
+
+        // For security, allow filtering by user_id only when it matches the authenticated user
+        const filtroUserId = user_id && Number(user_id) === req.user.userId ? req.user.userId : req.user.userId;
+
+        let query;
+        let values;
+
+        if (certificacao) {
+            query = 'SELECT * FROM historico_simulados WHERE user_id = $1 AND certificacao = $2 ORDER BY data_geracao DESC LIMIT 50';
+            values = [filtroUserId, certificacao];
+        } else {
+            query = 'SELECT * FROM historico_simulados WHERE user_id = $1 ORDER BY data_geracao DESC LIMIT 50';
+            values = [filtroUserId];
+        }
+
+        const result = await pool.query(query, values);
         res.json(result.rows);
     } catch (error) {
         res.status(500).json({ error: 'Falha ao buscar histórico '});
