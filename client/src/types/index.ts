@@ -5,6 +5,7 @@ export interface Questao {
     alternativas: string[]
     correta: number
     explicacao: string
+    id_banco?: number
 }
 
 export interface QuestaoRespondida {
