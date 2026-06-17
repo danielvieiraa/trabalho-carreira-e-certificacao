@@ -14,6 +14,11 @@ export interface QuestaoRespondida {
     correta: boolean
 }
 
+export interface User {
+    id: number
+    username: string
+}
+
 export interface Certificacao {
     id: string
     nome: string

@@ -1,4 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
+import type { Questao } from '../types';
+import { buscarHistorico } from '../services/api';
 import { CERTIFICACOES } from '../data/certificacoes';
 
 interface RegistroHistorico {
@@ -14,26 +16,27 @@ interface RegistroHistorico {
     };
 }
 
+import type { User } from '../types';
+
 interface Props {
     onVoltar?: () => void;
+    user?: User;
 }
 
-export default function TelaHistorico({ onVoltar }: Props) {
+export default function TelaHistorico({ onVoltar, user }: Props) {
     const [historico, setHistorico] = useState<RegistroHistorico[]>([]);
     const [carregando, setCarregando] = useState(true);
     const [filtroFiltro, setFiltroFiltro] = useState<string | null>(null);
     const [expandidos, setExpandidos] = useState<Set<number>>(new Set());
 
     useEffect(() => {
-        buscarHistorico();
-    }, []);
+        buscarHistoricoDados();
+    }, [user]);
 
-    async function buscarHistorico() {
+    async function buscarHistoricoDados(filtro?: string | null) {
         try {
             setCarregando(true);
-            const url = filtroFiltro ? `/api/historico?certificacao=${filtroFiltro}` : '/api/historico';
-            const response = await fetch(url);
-            const data = await response.json();
+            const data = await buscarHistorico(filtro ?? filtroFiltro ?? undefined, user?.id);
             setHistorico(data);
         } catch (error) {
             console.error('Erro ao buscar histórico:', error);
@@ -120,7 +123,7 @@ export default function TelaHistorico({ onVoltar }: Props) {
                             <button
                                 onClick={() => {
                                     setFiltroFiltro(null);
-                                    buscarHistorico();
+                                    buscarHistoricoDados(null);
                                 }}
                                 className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 ${
                                     filtroFiltro === null
@@ -135,7 +138,7 @@ export default function TelaHistorico({ onVoltar }: Props) {
                                     key={cert}
                                     onClick={() => {
                                         setFiltroFiltro(cert);
-                                        buscarHistorico();
+                                        buscarHistoricoDados(cert);
                                     }}
                                     className={`px-4 py-2 rounded-lg font-medium transition-all duration-150 ${
                                         filtroFiltro === cert
@@ -172,7 +175,7 @@ export default function TelaHistorico({ onVoltar }: Props) {
                     <div className="space-y-3">
                         {historico.map((registro) => {
                             const isExpandido = expandidos.has(registro.id);
-                            let conteudo;
+                            let conteudo: Questao | null = null;
                             let respostaUsuario;
 
                             try {
@@ -238,7 +241,7 @@ export default function TelaHistorico({ onVoltar }: Props) {
                                                     Alternativas:
                                                 </h4>
                                                 <div className="space-y-2">
-                                                    {conteudo.alternativas?.map((alt, idx) => (
+                                                    {conteudo.alternativas?.map((alt: string, idx: number) => (
                                                         <div
                                                             key={idx}
                                                             className={`p-3 rounded-lg border-2 ${
