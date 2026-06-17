@@ -29,6 +29,35 @@ const CERTIFICACOES = {
     'COMPTIA': {nome: 'CompTIA Security+', descricao: 'Segurança da informação - CompTIA Security+'},
 };
 
+function gerarQuestaoFallback(certificacao, dificuldade) {
+    const cert = CERTIFICACOES[certificacao];
+    if (!cert) return null;
+
+    const alternativas = [
+        'Proteção de dados e privacidade',
+        'Melhoria da governança de TI e operações',
+        'Equipe ágil e gerenciamento de projetos',
+        'Conceitos de infraestrutura de nuvem'
+    ];
+
+    const indiceCorreto = {
+        'DPO': 0,
+        'ITIL4': 1,
+        'SCRUM': 2,
+        'AWS-CCP': 3,
+        'AZURE': 3,
+        'COMPTIA': 0
+    }[certificacao] ?? 0;
+
+    return {
+        pergunta: `Qual é o foco principal da certificação ${cert.nome}?`,
+        alternativas,
+        correta: indiceCorreto,
+        explicacao: `A certificação ${cert.nome} é direcionada a ${cert.descricao.toLowerCase()}. Esta alternativa representa o objetivo principal desse tipo de certificação.`, 
+        dificuldade: dificuldade
+    };
+}
+
 app.get('/', (req, res) => {
     res.send('Servidor online')
 });
@@ -45,7 +74,7 @@ app.post('/api/gerar-questao', async (req, res) => {
             })
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
         const prompt = `Você é um gerador de questões para certificações de TI.
         gere UMA questão de múltipla escolha de nível ${dificuldade} para a certificação ${cert.nome} (${cert.descricao}).
@@ -67,18 +96,30 @@ app.post('/api/gerar-questao', async (req, res) => {
 
         O campo "correta" é o índice (0 a 3) da alternativa correta. Varie sempre o índice da resposta correta.`;
 
-        const result = await model.generateContent(prompt);
-        const textoResposta = result.response.text();
+        let textoLimpo;
+        let questao;
 
-        const inicio = textoResposta.indexOf('{')
-        const fim = textoResposta.indexOf('}')
+        try {
+            const result = await model.generateContent(prompt);
+            const textoResposta = result.response.text();
 
-        if (inicio === -1 || fim === -1) {
-            throw new Error('IA não retornou um JSON válido')
+            const inicio = textoResposta.indexOf('{')
+            const fim = textoResposta.indexOf('}')
+
+            if (inicio === -1 || fim === -1) {
+                throw new Error('IA não retornou um JSON válido')
+            }
+
+            textoLimpo = textoResposta.substring(inicio, fim + 1);
+            questao = JSON.parse(textoLimpo);
+        } catch (error) {
+            console.warn('Falha geração IA, usando fallback:', error?.message || error);
+            questao = gerarQuestaoFallback(certificacao, dificuldade);
+            if (!questao) {
+                throw error;
+            }
+            textoLimpo = JSON.stringify(questao);
         }
-
-        const textoLimpo = textoResposta.substring(inicio, fim + 1);
-        const questao = JSON.parse(textoLimpo);
 
         // Persistência: Grava o resultado na tabela historico_simulados
         const insertQuery = `

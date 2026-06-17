@@ -7,6 +7,11 @@ interface RegistroHistorico {
     certificacao: string;
     dificuldade: string;
     data_geracao: string;
+    respostas_usuario?: string | {
+        escolhida?: number;
+        correta?: boolean;
+        acertou?: boolean;
+    };
 }
 
 interface Props {
@@ -168,10 +173,22 @@ export default function TelaHistorico({ onVoltar }: Props) {
                         {historico.map((registro) => {
                             const isExpandido = expandidos.has(registro.id);
                             let conteudo;
+                            let respostaUsuario;
+
                             try {
                                 conteudo = JSON.parse(registro.conteudo_questao);
                             } catch {
                                 conteudo = null;
+                            }
+
+                            if (registro.respostas_usuario) {
+                                try {
+                                    respostaUsuario = typeof registro.respostas_usuario === 'string'
+                                        ? JSON.parse(registro.respostas_usuario)
+                                        : registro.respostas_usuario;
+                                } catch {
+                                    respostaUsuario = null;
+                                }
                             }
 
                             return (
@@ -245,6 +262,24 @@ export default function TelaHistorico({ onVoltar }: Props) {
                                                         </div>
                                                     ))}
                                                 </div>
+                                            </div>
+
+                                            <div className="mb-4">
+                                                <h4 className="font-semibold text-gray-900 mb-3">
+                                                    Resultado do usuário:
+                                                </h4>
+                                                {respostaUsuario ? (
+                                                    <div className="flex items-center gap-3 text-sm text-gray-700">
+                                                        <span className={`px-2 py-1 rounded-full font-medium ${respostaUsuario.acertou ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                            {respostaUsuario.acertou ? 'Acertou' : 'Errou'}
+                                                        </span>
+                                                        <span>
+                                                            Resposta escolhida: <strong>{conteudo.alternativas?.[respostaUsuario.escolhida] ?? 'N/A'}</strong>
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-gray-500">Resposta do usuário não disponível.</p>
+                                                )}
                                             </div>
 
                                             <div>

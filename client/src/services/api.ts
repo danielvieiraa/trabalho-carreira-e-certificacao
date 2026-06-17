@@ -10,7 +10,7 @@ interface GerarQuestaoResponse {
 
 interface SalvarRespostasResponse {
     sucesso: boolean
-    id: number
+    atualizados: number
     respostas_salvas: unknown
 }
 
@@ -27,11 +27,12 @@ export async function gerarQuestao(certificacao: string, dificuldade: string): P
     }
 
     const data: GerarQuestaoResponse = await response.json();
-    return data.questao;
+    return { ...data.questao, id_banco: data.id_banco };
 }
 
 export async function salvarRespostas(certificacao: string, dificuldade: string, respostas: QuestaoRespondida[]): Promise<SalvarRespostasResponse> {
     const respostasFormatadas = respostas.map(r => ({
+        id_banco: r.questao.id_banco,
         escolhida: r.escolhida,
         correta: r.questao.correta,
         acertou: r.correta
